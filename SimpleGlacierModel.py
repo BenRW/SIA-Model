@@ -53,7 +53,7 @@ bedrock = get_bedrock(xaxis)
 
 dt    = 365.*86400./ntpy # in seconds!
 
-hice   = np.zeros(nx)    # ice thickness
+h_ice   = np.zeros(nx)    # ice thickness
 dhdx   = np.zeros(nx)    # the local gradient of h
 fluxd  = np.zeros(nx+2)  # this will be the flux per second!!!!
 fluxs  = np.zeros(nx+2)  # this will be the flux per second!!!!
@@ -84,14 +84,14 @@ iframes  = 0
 print("Run model for {0:3d} years".format(nyear))
 
 for it in range(ntpy*nyear + 1):
-    h = hice + bedrock
+    h = h_ice + bedrock
     if FluxAtPoints:
         dhdx[1:-1] = (h[2:]-h[:-2])/(2*dx)
         
         # the following equation needs to be adjusted according to your discretisation
         # note that flux[1] is at the point 0
-        fluxd[1:-1] = cd * (dhdx) * (hice)  
-        fluxs[1:-1] = cs * (dhdx) * (hice)
+        fluxd[1:-1] = cd * (dhdx) * (h_ice)  
+        fluxs[1:-1] = cs * (dhdx) * (h_ice)
 
         # derive flux convergence
         dhdtif[:]  = (fluxd[2:]-fluxd[:-2]+fluxs[2:]-fluxs[:-2])/(2*dx)
@@ -100,8 +100,8 @@ for it in range(ntpy*nyear + 1):
         
         # the following equation needs to be adjusted according to your discretisation
         # note that flux[1] is at the point 1/2
-        fluxd[1:-2] = cd * dhdx[:-1] * ( ((hice[1:])+(hice[:-1])) * 0.5 )
-        fluxs[1:-2] = cs * dhdx[:-1] * ( ((hice[1:])+(hice[:-1])) * 0.5 )
+        fluxd[1:-2] = cd * dhdx[:-1] * ( ((h_ice[1:])+(h_ice[:-1])) * 0.5 )
+        fluxs[1:-2] = cs * dhdx[:-1] * ( ((h_ice[1:])+(h_ice[:-1])) * 0.5 )
         
         # derive flux convergence
         dhdtif[:]  = (fluxd[1:-1]-fluxd[:-2] + fluxs[1:-1]-fluxs[:-2])/dx
@@ -116,21 +116,21 @@ for it in range(ntpy*nyear + 1):
     smb[:] = (h-ela)*dbdh
     smb[:] = np.where(smb>maxb, maxb, smb) 
     
-    hice   += smb/ntpy + dt*dhdtif
-    hice[:] = np.where(hice<0., 0., hice) # remove negative ice thicknesses
+    h_ice   += smb/ntpy + dt*dhdtif
+    h_ice[:] = np.where(h_ice<0., 0., h_ice) # remove negative ice thicknesses
     
     if ZeroFluxBoundary == False:
-        hice[0] = hice[-1] = 0.
+        h_ice[0] = h_ice[-1] = 0.
     
     if it%(ndyfigure*ntpy) == 0:
-        hsurfmem[:,iframes] = hice + bedrock
+        hsurfmem[:,iframes] = h_ice + bedrock
         smbmem[:,iframes]   = smb
         ifdmem[:,iframes]   = dhdtif[:]*365.*86400.
         fldmem[:,iframes]   = -fluxd[1:-2]*365.*86400.
         flsmem[:,iframes]   = -fluxs[1:-2]*365.*86400.
         iframes            += 1
         if StopWhenOutOfDomain:
-            if hice[-1]>1.:
+            if h_ice[-1]>1.:
                 print("Ice at end of domain!")
                 exit()
         
