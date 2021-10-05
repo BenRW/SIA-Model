@@ -24,4 +24,5 @@ def get_bedrock(xaxis):
     return bedrock
 
 
-
+def accumlation(h):
+  return beta * (h - h_ela)
