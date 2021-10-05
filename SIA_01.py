@@ -1,7 +1,7 @@
 """
 Created on 05/10/2021
 
-@authors: Ben Romero-Wilcock and Jim
+@authors: Ben Romero-Wilcock and Jim Regtien
 """
 
 
