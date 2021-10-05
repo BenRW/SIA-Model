@@ -14,3 +14,6 @@ g = 9.81
 fd = 1.9e-24
 fs = 5.7e-20
 
+
+def accumlation(h):
+  return beta * (h - h_ela)
