@@ -16,8 +16,6 @@ dx    =   100 # grid size [m]
 ntpy  =   200 # number of timesteps per year
 
 ZeroFluxBoundary = True # either no-flux (True) or No-ice boundary (False)
-FluxAtPoints     = False # if true, the ice flux is calculated on grid points, 
-                        #  otherwise on half points
 StopWhenOutOfDomain = True                        
                         
 ndyfigure = 5           # number of years between a figure frame                        
@@ -85,26 +83,15 @@ print("Run model for {0:3d} years".format(nyear))
 
 for it in range(ntpy*nyear + 1):
     h = h_ice + bedrock
-    if FluxAtPoints:
-        dhdx[1:-1] = (h[2:]-h[:-2])/(2*dx)
-        
-        # the following equation needs to be adjusted according to your discretisation
-        # note that flux[1] is at the point 0
-        fluxd[1:-1] = cd * (dhdx) * (h_ice)  
-        fluxs[1:-1] = cs * (dhdx) * (h_ice)
-
-        # derive flux convergence
-        dhdtif[:]  = (fluxd[2:]-fluxd[:-2]+fluxs[2:]-fluxs[:-2])/(2*dx)
-    else:
-        dhdx[:-1]  = (h[1:]-h[:-1])/dx # so 0 is at 1/2 actually
-        
-        # the following equation needs to be adjusted according to your discretisation
-        # note that flux[1] is at the point 1/2
-        fluxd[1:-2] = cd * dhdx[:-1] * ( ((h_ice[1:])+(h_ice[:-1])) * 0.5 )
-        fluxs[1:-2] = cs * dhdx[:-1] * ( ((h_ice[1:])+(h_ice[:-1])) * 0.5 )
-        
-        # derive flux convergence
-        dhdtif[:]  = (fluxd[1:-1]-fluxd[:-2] + fluxs[1:-1]-fluxs[:-2])/dx
+    dhdx[:-1]  = (h[1:]-h[:-1])/dx # so 0 is at 1/2 actually
+    
+    # the following equation needs to be adjusted according to your discretisation
+    # note that flux[1] is at the point 1/2
+    fluxd[1:-2] = cd * dhdx[:-1] * ( ((h_ice[1:])+(h_ice[:-1])) * 0.5 )
+    fluxs[1:-2] = cs * dhdx[:-1] * ( ((h_ice[1:])+(h_ice[:-1])) * 0.5 )
+    
+    # differenciate flux convergence
+    dhdtif[:]  = (fluxd[1:-1]-fluxd[:-2] + fluxs[1:-1]-fluxs[:-2])/dx
         
     # calculate smb (per year)
     # first update ela (once a year)
