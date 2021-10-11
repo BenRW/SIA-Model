@@ -22,7 +22,9 @@ FluxAtPoints     = False # if true, the ice flux is calculated on grid points,
 bump             = False
 StopWhenOutOfDomain = True                        
                         
-ndyfigure = 5           # number of years between a figure frame                        
+ndyfigure = 5           # number of years between a figure frame      
+
+build_animation = False
 
 
 rho   =  917.      # kg/m3
@@ -32,7 +34,8 @@ fs    =    5.7E-20 # # pa-3 m2 s-1 # this value and dimension is only correct fo
 
 
 elalist = np.array([1800., 1750., 1900., 1800.,])  # m
-elayear = np.array([1000., 1000., 1000., 1000.])  # years    
+# elayear = np.array([1000., 1000., 1000., 1000.])  # years    
+elayear = np.array([1000., 1000., 1000., 1000.])*1.5  # years    
 dbdh    =    0.007    # [m/m]/yr
 maxb    =    2.      # m/yr
 
@@ -71,6 +74,14 @@ smb    = np.zeros(nx)
 # preparations for the ela-selection
 # elaswch is a list of time steps on which a new ela value should be used.
 nyear    = int(np.sum(elayear))
+
+length = np.zeros(nyear*ntpy+1) # record length of glacier at all timesteps
+height_thr = 0.1 # end of glacier defined where height is less than this
+
+offset = np.zeros(nyear*ntpy+1)
+
+time = np.arange(0, nyear, 1/ntpy)
+
 if np.size(elalist) != np.size(elayear):
     print("the arrays of elalist and elayear does not have the same length!")
     exit()
@@ -88,7 +99,7 @@ ifdmem   = np.zeros([nx,nframes])
 fldmem   = np.zeros([nx-1,nframes])
 flsmem   = np.zeros([nx-1,nframes])
 iframes  = 0
-hindexmem = 
+
 
 print("Run model for {0:3d} years".format(nyear))
 
@@ -141,70 +152,98 @@ for it in range(ntpy*nyear + 1):
             if h_ice[-1]>1.:
                 print("Ice at end of domain!")
                 break
+
+    length[it] = xaxis[np.where(h_ice<height_thr)[0][0]]
         
+for i in range(len(elalist)):
+    if i<len(elalist)-1:
+        index = int(np.sum(elayear[:i+1])*ntpy)
+    else:
+        index = int(np.sum(elayear)*ntpy)
+    print(index)
+
+    offset[index:] = np.zeros(len(offset)-index)
+    offset[index:] -= length[index]
+
+length += offset
+length = np.abs(length)
+
+print(length)
+
+
+if build_animation:
+    # at this point, the simulation is completed.        
+    # the following is needed to make the animation        
+    fig  = plt.figure()
+    ax1  = fig.add_subplot(311, autoscale_on=False, xlim=(0,totL/1000.), \
+                        ylim=(np.min(bedrock),np.max(hsurfmem)+10.))
+    mina2 = min(np.min(smbmem),np.min(ifdmem))
+    maxa2 = max(np.max(smbmem),np.max(ifdmem))
+    ax2   = fig.add_subplot(312, autoscale_on=False, xlim=(0,totL/1000.), \
+                        ylim=(mina2,maxa2))
+    mina3 = min(np.min(fldmem),np.min(flsmem))
+    maxa3 = max(np.max(fldmem),np.max(flsmem))
+    ax3   = fig.add_subplot(313, autoscale_on=False, xlim=(0,totL/1000.), \
+                        ylim=(mina3,maxa3))
+
+
+    # define the line types
+    bedrline, = ax1.plot([],[],'-', c='saddlebrown', label = 'Bedrock') 
+    hsrfline, = ax1.plot([],[],'-', c='navy', label = 'total height')
+    time_template = 'time = %d y'
+    time_text = ax1.text(0.5, 0.92, '', transform=ax1.transAxes )
+    smbline,  = ax2.plot([],[],'-', c='navy', label = 'surface mass balance')
+    ifdline,  = ax2.plot([],[],'-', c='red', label = '$\\frac{dh}{dt}$ due to ice flux')
+    fxdline,  = ax3.plot([],[],'-', c='navy', label = 'Ice flux due to deformation')
+    fxsline,  = ax3.plot([],[],'-', c='red', label = 'Ice flux due to sliding')
+
+    # initialize the animation
+    def init_anim():
+        bedrline.set_data([], [])
+        hsrfline.set_data([], [])
+        time_text.set_text('')
+        smbline.set_data([], [])
+        ifdline.set_data([], [])
+        fxdline.set_data([], [])
+        fxsline.set_data([], [])
+
+        return bedrline, hsrfline, time_text, smbline, ifdline, fxdline, fxsline
+
+    # update the animation with data for saved frame #tf
+    def animate(tf):
+        bedrline.set_data(xaxis/1000., bedrock)
+        hsrfline.set_data(xaxis/1000., hsurfmem[:,tf])
+        time_text.set_text(time_template % int(tf*ndyfigure))
+        smbline.set_data(xaxis/1000.,  smbmem[:,tf])
+        ifdline.set_data(xaxis/1000.,  ifdmem[:,tf])
+        fxdline.set_data(xhaxs      ,  fldmem[:,tf])
+        fxsline.set_data(xhaxs      ,  flsmem[:,tf])
         
-# at this point, the simulation is completed.        
-# the following is needed to make the animation        
-fig  = plt.figure()
-ax1  = fig.add_subplot(311, autoscale_on=False, xlim=(0,totL/1000.), \
-                      ylim=(np.min(bedrock),np.max(hsurfmem)+10.))
-mina2 = min(np.min(smbmem),np.min(ifdmem))
-maxa2 = max(np.max(smbmem),np.max(ifdmem))
-ax2   = fig.add_subplot(312, autoscale_on=False, xlim=(0,totL/1000.), \
-                      ylim=(mina2,maxa2))
-mina3 = min(np.min(fldmem),np.min(flsmem))
-maxa3 = max(np.max(fldmem),np.max(flsmem))
-ax3   = fig.add_subplot(313, autoscale_on=False, xlim=(0,totL/1000.), \
-                      ylim=(mina3,maxa3))
+        return bedrline, hsrfline, time_text, smbline, ifdline, fxdline, fxsline
+        
+    # call and run animation
+    ani = animation.FuncAnimation(fig, animate, np.arange(iframes),\
+            interval=25, blit=True, init_func=init_anim, )     
 
+    ax3.set_xlabel('Distance in Km')
+    ax3.set_ylabel('Ice flux in m^2 yr-1')
+    ax2.set_ylabel('accumulation m/yr')
+    ax1.set_ylabel('Height in m')
+    ax1.legend()
+    ax2.legend()
+    ax3.legend()
 
-# define the line types
-bedrline, = ax1.plot([],[],'-', c='saddlebrown', label = 'Bedrock') 
-hsrfline, = ax1.plot([],[],'-', c='navy', label = 'total height')
-time_template = 'time = %d y'
-time_text = ax1.text(0.5, 0.92, '', transform=ax1.transAxes )
-smbline,  = ax2.plot([],[],'-', c='navy', label = 'surface mass balance')
-ifdline,  = ax2.plot([],[],'-', c='red', label = '$\\frac{dh}{dt}$ due to ice flux')
-fxdline,  = ax3.plot([],[],'-', c='navy', label = 'Ice flux due to deformation')
-fxsline,  = ax3.plot([],[],'-', c='red', label = 'Ice flux due to sliding')
+    # ani.save('Bumpless animation.mp4')
 
-# initialize the animation
-def init_anim():
-    bedrline.set_data([], [])
-    hsrfline.set_data([], [])
-    time_text.set_text('')
-    smbline.set_data([], [])
-    ifdline.set_data([], [])
-    fxdline.set_data([], [])
-    fxsline.set_data([], [])
+fig2  = plt.figure()
+ax = fig2.add_subplot(111)
 
-    return bedrline, hsrfline, time_text, smbline, ifdline, fxdline, fxsline
+ax.plot(time, length[:-1], label="length")
+# ax.plot(time, offset[:-1], label="offset")
+ax.legend()
+ax.set_xlabel("Time [years]")
+ax.set_ylabel("Glacier length [m]")
 
-# update the animation with data for saved frame #tf
-def animate(tf):
-    bedrline.set_data(xaxis/1000., bedrock)
-    hsrfline.set_data(xaxis/1000., hsurfmem[:,tf])
-    time_text.set_text(time_template % int(tf*ndyfigure))
-    smbline.set_data(xaxis/1000.,  smbmem[:,tf])
-    ifdline.set_data(xaxis/1000.,  ifdmem[:,tf])
-    fxdline.set_data(xhaxs      ,  fldmem[:,tf])
-    fxsline.set_data(xhaxs      ,  flsmem[:,tf])
-    
-    return bedrline, hsrfline, time_text, smbline, ifdline, fxdline, fxsline
-    
-# call and run animation
-ani = animation.FuncAnimation(fig, animate, np.arange(iframes),\
-         interval=25, blit=True, init_func=init_anim, )     
-
-ax3.set_xlabel('Distance in Km')
-ax3.set_ylabel('Ice flux in m^2 yr-1')
-ax2.set_ylabel('accumulation m/yr')
-ax1.set_ylabel('Height in m')
-ax1.legend()
-ax2.legend()
-ax3.legend()
-
-ani.save('Bumpless animation.mp4')
 plt.show()
 
 
