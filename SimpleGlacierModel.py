@@ -12,12 +12,14 @@ import matplotlib.animation as animation
 
 totL  = 20000 # total length of the domain [m]
 dx    =   100 # grid size [m]
+N = int(2000/100)
 
 ntpy  =   200 # number of timesteps per year
 
 ZeroFluxBoundary = True # either no-flux (True) or No-ice boundary (False)
 FluxAtPoints     = False # if true, the ice flux is calculated on grid points, 
                         #  otherwise on half points
+bump             = False
 StopWhenOutOfDomain = True                        
                         
 ndyfigure = 5           # number of years between a figure frame                        
@@ -34,12 +36,18 @@ elayear = np.array([1000., 1000., 1000., 1000.])  # years
 dbdh    =    0.007    # [m/m]/yr
 maxb    =    2.      # m/yr
 
-cd    = rho*g*fd  # <<< this must be adjused according to your discretisation
-cs    = rho*g*fs  # <<< this must be adjused according to your discretisation
+cd    = 2/5 * (rho*g) **3 * fd  # <<< this must be adjused according to your discretisation
+cs    = (rho*g) ** 3 *fs  # <<< this must be adjused according to your discretisation
 
 def get_bedrock(xaxis):
     # here you put in your own equation that defines the bedrock
-    bedrock = 1900. - xaxis*0.05
+    bedrock = 1900. - xaxis*0.05 
+    
+    if bump:
+        a = 50
+        b = 10000
+        c = 1000 
+        bedrock += a * np.exp(- ((xaxis - b )/c) **2 )
     return bedrock
 
 # Start calculations
@@ -80,32 +88,32 @@ ifdmem   = np.zeros([nx,nframes])
 fldmem   = np.zeros([nx-1,nframes])
 flsmem   = np.zeros([nx-1,nframes])
 iframes  = 0
+hindexmem = 
 
 print("Run model for {0:3d} years".format(nyear))
 
 for it in range(ntpy*nyear + 1):
     h = h_ice + bedrock
-    if FluxAtPoints:
-        dhdx[1:-1] = (h[2:]-h[:-2])/(2*dx)
+    # if FluxAtPoints:
+    #     dhdx[1:-1] = (h[2:]-h[:-2])/(2*dx)
         
-        # the following equation needs to be adjusted according to your discretisation
-        # note that flux[1] is at the point 0
-        fluxd[1:-1] = cd * (dhdx) * (h_ice)  
-        fluxs[1:-1] = cs * (dhdx) * (h_ice)
+    #     # the following equation needs to be adjusted according to your discretisation
+    #     # note that flux[1] is at the point 0
+    #     fluxd[1:-1] = cd * (dhdx) * (h_ice)  
+    #     fluxs[1:-1] = cs * (dhdx) * (h_ice)
 
-        # derive flux convergence
-        dhdtif[:]  = (fluxd[2:]-fluxd[:-2]+fluxs[2:]-fluxs[:-2])/(2*dx)
-    else:
-        dhdx[:-1]  = (h[1:]-h[:-1])/dx # so 0 is at 1/2 actually
-        
-        # the following equation needs to be adjusted according to your discretisation
-        # note that flux[1] is at the point 1/2
-        fluxd[1:-2] = cd * dhdx[:-1] * ( ((h_ice[1:])+(h_ice[:-1])) * 0.5 )
-        fluxs[1:-2] = cs * dhdx[:-1] * ( ((h_ice[1:])+(h_ice[:-1])) * 0.5 )
-        
-        # derive flux convergence
-        dhdtif[:]  = (fluxd[1:-1]-fluxd[:-2] + fluxs[1:-1]-fluxs[:-2])/dx
-        
+    #     # derive flux convergence
+    #     dhdtif[:]  = (fluxd[2:]-fluxd[:-2]+fluxs[2:]-fluxs[:-2])/(2*dx)
+    dhdx[:-1]  = (h[1:]-h[:-1])/dx # so 0 is at 1/2 actually
+    
+    # the following equation needs to be adjusted according to your discretisation
+    # note that flux[1] is at the point 1/2
+    fluxd[1:-2] = cd * dhdx[:-1] ** 3 * ( ((h_ice[1:])+(h_ice[:-1])) * 0.5 ) ** 5
+    fluxs[1:-2] = cs * dhdx[:-1] ** 3 * ( ((h_ice[1:])+(h_ice[:-1])) * 0.5 ) ** 3
+    
+    # derive flux convergence
+    dhdtif[:]  = (fluxd[1:-1]-fluxd[:-2] + fluxs[1:-1]-fluxs[:-2])/dx
+    
     # calculate smb (per year)
     # first update ela (once a year)
     if it%ntpy == 0:
@@ -132,7 +140,7 @@ for it in range(ntpy*nyear + 1):
         if StopWhenOutOfDomain:
             if h_ice[-1]>1.:
                 print("Ice at end of domain!")
-                exit()
+                break
         
         
 # at this point, the simulation is completed.        
@@ -151,14 +159,14 @@ ax3   = fig.add_subplot(313, autoscale_on=False, xlim=(0,totL/1000.), \
 
 
 # define the line types
-bedrline, = ax1.plot([],[],'-', c='saddlebrown') 
-hsrfline, = ax1.plot([],[],'-', c='navy')
+bedrline, = ax1.plot([],[],'-', c='saddlebrown', label = 'Bedrock') 
+hsrfline, = ax1.plot([],[],'-', c='navy', label = 'total height')
 time_template = 'time = %d y'
 time_text = ax1.text(0.5, 0.92, '', transform=ax1.transAxes )
-smbline,  = ax2.plot([],[],'-', c='navy')
-ifdline,  = ax2.plot([],[],'-', c='red')
-fxdline,  = ax3.plot([],[],'-', c='navy')
-fxsline,  = ax3.plot([],[],'-', c='red')
+smbline,  = ax2.plot([],[],'-', c='navy', label = 'surface mass balance')
+ifdline,  = ax2.plot([],[],'-', c='red', label = '$\\frac{dh}{dt}$ due to ice flux')
+fxdline,  = ax3.plot([],[],'-', c='navy', label = 'Ice flux due to deformation')
+fxsline,  = ax3.plot([],[],'-', c='red', label = 'Ice flux due to sliding')
 
 # initialize the animation
 def init_anim():
@@ -188,8 +196,18 @@ def animate(tf):
 ani = animation.FuncAnimation(fig, animate, np.arange(iframes),\
          interval=25, blit=True, init_func=init_anim, )     
 
+ax3.set_xlabel('Distance in Km')
+ax3.set_ylabel('Ice flux in m^2 yr-1')
+ax2.set_ylabel('accumulation m/yr')
+ax1.set_ylabel('Height in m')
+ax1.legend()
+ax2.legend()
+ax3.legend()
 
+ani.save('Bumpless animation.mp4')
 plt.show()
+
+
         
 
 
