@@ -1,18 +1,15 @@
 library(ggplot2)
 
-file.wbump <- 'C:\\Users\\31642\\Documents\\Utrecht\\IceClimate\\Project\\SIA-Model\\glacier_bump.csv'
-file.flat <- 'C:\\Users\\31642\\Documents\\Utrecht\\IceClimate\\Project\\SIA-Model\\glacier_no_bump.csv'
+file.rt_b <- 'C:\\Users\\31642\\Documents\\Utrecht\\IceClimate\\Project\\SIA-Model\\glacier_bump_1.csv'
+file.rt_nb <- 'C:\\Users\\31642\\Documents\\Utrecht\\IceClimate\\Project\\SIA-Model\\glacier_no_bump_1.csv'
 
-data.bump <- read.csv(file.wbump)
-data.flat <- read.csv(file.flat)
+file.mass_b <- 'C:\\Users\\31642\\Documents\\Utrecht\\IceClimate\\Project\\SIA-Model\\mass_bump.csv'
+file.mass_nb <- 'C:\\Users\\31642\\Documents\\Utrecht\\IceClimate\\Project\\SIA-Model\\mass_no_bump.csv'
 
+dat.rt_b <- read.csv(file.rt_b)
+dat.rt_nb <- read.csv(file.rt_nb)
+dat.mass_nb <- read.csv(file.mass_nb)
+dat.mass_b <- read.csv(file.mass_b)
 
-plot.wbump <- ggplot(data = data.bump, aes(x = dl_f, y = t.response)) + geom_line()
-plot.flat <- ggplot(data = data.flat, aes(x = dl_f, y = t.response)) + geom_line()
-
-df.tot <- rbind(data.bump, data.flat)
-
-plot.total <- (ggplot(data = df.tot, aes(x=h.ela, y = t.response, color = dl_f, shape = bump))
-               + geom_point(size = 3) + geom_line() + ggtitle('response time vs equilibrium line height')   
-               + scale_y_continuous(trans = 'log2'))
-print(plot.total)
+plot.mass <- (ggplot() + geom_line(data = dat.mass_b, aes(x = time, y = mass))
++ geom_line(data = dat.mass_nb, aes(x = time, y = mass), color = 'red'))

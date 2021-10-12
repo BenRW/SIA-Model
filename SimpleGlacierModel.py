@@ -12,7 +12,9 @@ import matplotlib.animation as animation
 import csv
 
 #name of csv file
-filename = 'glacier_no_bump.csv'
+filename = 'glacier_bump_1.csv'
+plot_title = 'Glacier, with bump'
+filename_mass = 'Mass_bump.csv'
 
 totL  = 20000 # total length of the domain [m]
 dx    =   100 # grid size [m]
@@ -23,7 +25,7 @@ ntpy  =   200 # number of timesteps per year
 ZeroFluxBoundary = True # either no-flux (True) or No-ice boundary (False)
 FluxAtPoints     = False # if true, the ice flux is calculated on grid points, 
                         #  otherwise on half points
-bump             = False
+bump             = True
 StopWhenOutOfDomain = True                        
                         
 ndyfigure = 5           # number of years between a figure frame      
@@ -39,14 +41,32 @@ fs    =    5.7E-20 # # pa-3 m2 s-1 # this value and dimension is only correct fo
 
 #elalist = np.array([1800., 1750., 1900., 1800.,])  # m
 # elayear = np.array([1000., 1000., 1000., 1000.])  # years
-elalist = np.array([1850., 1800., 1750, 1700, 1750, 1800, 1850, 1800])      
-elayear = np.array([1000., 500., 1000, 1000., 500., 500., 500., 500.])   # years    
+elalist = np.array([1850., 1800., 1750, 1700, 1750, 1800, 1850.])  
+elayear = np.array([1500., 500., 1000, 1000., 500., 500., 500.])   # years    
 dbdh    =    0.007    # [m/m]/yr
 maxb    =    2.      # m/yr
 
 cd    = 2/5 * (rho*g) **3 * fd  # <<< this must be adjused according to your discretisation
 cs    = (rho*g) ** 3 *fs  # <<< this must be adjused according to your discretisation
 
+##############################################################################
+# If statements with settings
+if True:
+    bump = True
+    filename = 'glacier_bump_1.csv'
+    plot_title = 'Glacier, with bump'
+    filename_mass = 'mass_bump.csv'
+    elalist = np.array([1850., 1800., 1750, 1700, 1750, 1800, 1850.])  
+    elayear = np.array([1500., 500., 1000, 1000., 500., 500., 500.])   # years  
+    
+if False:
+    bump = False
+    filename = 'glacier_no_bump_1.csv'
+    plot_title = 'Glacier, no bump'
+    filename_mass = 'mass_no_bump.csv'
+    elalist = np.array([1850., 1800., 1750, 1700, 1750, 1800, 1850.])  
+    elayear = np.array([1500., 500., 1000, 1000., 500., 500., 500.])   # years  
+###############################################################################
 def get_bedrock(xaxis):
     # here you put in your own equation that defines the bedrock
     bedrock = 1900. - xaxis*0.05 
@@ -108,6 +128,8 @@ iframes  = 0
 
 print("Run model for {0:3d} years".format(nyear))
 
+mass = np.zeros(len(time) + 1)
+
 for it in range(ntpy*nyear + 1):
     h = h_ice + bedrock
     # if FluxAtPoints:
@@ -159,7 +181,9 @@ for it in range(ntpy*nyear + 1):
                 break
 
     length[it] = xaxis[np.where(h_ice<=height_thr)[0][0]]
- 
+    mass[it] = rho * np.sum(h_ice) * dx
+    
+    
 dl_final = np.zeros(len(elayear)) #array of the change in length 
 
 for i in range(len(elalist)):
@@ -169,10 +193,9 @@ for i in range(len(elalist)):
         index = int(np.sum(elayear)*ntpy)
     print(index)
     if i>0:
-        dl_final[i] = np.abs(length[index] - length[int(np.sum(elayear[:i] * ntpy))])
+        dl_final[i] = length[index] - length[int(np.sum(elayear[:i] * ntpy))]
     else:
         dl_final[i] = length[index]
-       
     offset[index:] = np.zeros(len(offset)-index)
     offset[index:] -= length[index] 
     
@@ -183,12 +206,12 @@ response_index = np.zeros(len(elayear))
 response_time = np.zeros(len(elayear))
 for j in range(len(response_index)):
     if j == 0:
-        response_index[0] = np.where(length >= 0.63*dl_final[0])[0][0]
+        response_index[0] = np.where(length >= 0.63*abs(dl_final[0]))[0][0]
         response_time[0] = time[int(response_index[0])]
     else:
         ind = int(np.sum(elayear[:j-1]) * ntpy)
         #np.where(length[ind:] >= 0.63 * dl_final[j])
-        response_index[j] = np.where(length[ind:] >= 0.63 * dl_final[j])[0][0] + ind
+        response_index[j] = np.where(length[ind:] >= 0.63 * abs(dl_final[j]))[0][0] + ind
         response_time[j] = time[int(response_index[j])] - np.sum(elayear[:j-1])
 
 print(length)
@@ -270,6 +293,14 @@ ax.legend()
 ax.set_xlabel("Time [years]")
 ax.set_ylabel("Glacier length [m]")
 
+fig3 = plt.figure()
+
+ax_mass = fig3.add_subplot(111)
+ax_mass.plot(time, mass[:-1])
+ax_mass.set_ylabel('mass in kg')
+ax_mass.set_xlabel('time')
+plt.title(plot_title)
+
 plt.show()
 
 ###############################################################################
@@ -287,7 +318,16 @@ for i in range(len(response_time)):
        
 f.close()
 
-   
+f = open(filename_mass, 'w+')
+headers = ['time', 'mass']
+
+
+csvobject = csv.writer(f, delimiter = ',', lineterminator='\n')
+csvobject.writerow(headers)
+for i in range(len(time)):
+    csvobject.writerow([str(time[i]), str(mass[i])])
+f.close()
+
 
                         
 
